@@ -2,15 +2,17 @@
 
 What to install, by task. When the user has nothing set up, the **bold** tool in
 each row is the free, capable default to recommend. Check what's already installed
-(`which ghidra radare2 rizin frida jadx apktool mitmproxy binwalk 2>/dev/null`)
-before suggesting installs.
+before suggesting installs: run `scripts/check_tools.py` (it probes PATH on every
+platform), or the shell equivalent — `which ghidra radare2 rizin frida jadx apktool
+mitmproxy binwalk 2>/dev/null` on macOS/Linux, `Get-Command ghidra,r2,jadx,apktool
+-ErrorAction SilentlyContinue` in PowerShell.
 
 ## By task
 
 | Task | Tools (default in bold) |
 | ---- | ----------------------- |
 | Triage / identify | `scripts/triage.py` (bundled), **`file`**, `rz-bin -I`, `binwalk` |
-| Disassemble / decompile native | **Ghidra**, rizin+Cutter, radare2, IDA Pro, Binary Ninja, Hopper |
+| Disassemble / decompile native | **Ghidra**, `ghidrecomp` (batch decompile to .c), rizin+Cutter, radare2, IDA Pro, Binary Ninja, Hopper |
 | Debug native (Linux) | **gdb + GEF/pwndbg**, lldb |
 | Debug native (Windows) | **x64dbg**, WinDbg, IDA |
 | Debug native (macOS) | **lldb** |
@@ -18,7 +20,7 @@ before suggesting installs.
 | iOS | **class-dump**, Hopper, otool, plutil, codesign |
 | .NET | **ILSpy / ilspycmd**, dnSpyEx, dotPeek, de4dot, monodis |
 | Java | **jadx**, CFR, Procyon, javap, Recaf |
-| JS / Electron / WASM | **prettier/js-beautify**, @electron/asar, wabt (wasm2wat), source-map tools |
+| JS / Electron / WASM | **prettier/js-beautify**, @electron/asar, wabt (wasm2wat), binaryen (wasm-decompile), source-map tools |
 | Dynamic hooking (cross-platform) | **Frida** (+ objection), frida-trace |
 | Syscall/API trace | **strace/ltrace** (Linux), Procmon/API Monitor (Windows), dtruss (macOS) |
 | Network / API | **mitmproxy**, Burp Suite, Wireshark, grpcurl, scapy |
@@ -34,17 +36,25 @@ is missing or a package moved, do a quick web search for the current method
 rather than guessing.
 
 **Ghidra** (12.x) — download the release from the official GitHub (NSA), unzip,
-run `ghidraRun`. It needs **JDK 21** (the current requirement; older JDKs won't
-launch it). Ghidra 12 bundles **PyGhidra** for native CPython 3 scripting — run
+run `ghidraRun`. It needs **JDK 21+**; Ghidra 12.2 specifically requires **JDK 25**
+and refuses to start on older ones (it prints `unsupported java version` and
+exits). Ghidra 12 bundles **PyGhidra** for native CPython 3 scripting — run
 `pyghidraRun` once and it offers to install the Python module. Headless/batch
-analysis is `support/analyzeHeadless`; the bundled
-`scripts/ghidra/DecompileExport.java` runs as a `-postScript` under it with no
-Python needed. Since Ghidra 12, Jython is an optional extension, so `.py` scripts
-only run under PyGhidra: `pyghidraRun -H <analyzeHeadless args>`. That launcher
-prompts to install `pyghidra` on first use; to keep it non-interactive, create a
-venv, `pip install --no-index -f <ghidra>/Ghidra/Features/PyGhidra/pypkg/dist
+analysis is `support/analyzeHeadless` (`analyzeHeadless.bat` on Windows); the
+bundled `scripts/ghidra/DecompileExport.java` runs as a `-postScript` under it
+with no Python needed. Since Ghidra 12, Jython is an optional extension, so `.py`
+scripts only run under PyGhidra: `pyghidraRun -H <analyzeHeadless args>`. That
+launcher prompts to install `pyghidra` on first use; to keep it non-interactive,
+create a venv, `pip install --no-index -f <ghidra>/Ghidra/Features/PyGhidra/pypkg/dist
 pyghidra`, and run `<venv python> <ghidra>/Ghidra/Features/PyGhidra/support/pyghidra_launcher.py
 <ghidra> -H <analyzeHeadless args>`.
+
+**ghidrecomp** — a CLI wrapper around Ghidra headless that writes one `.c` file
+per function, which is easier to grep than a single export. Install with
+`uv tool install ghidrecomp` (or `pipx install ghidrecomp`), then set
+`GHIDRA_INSTALL_DIR` to the Ghidra folder and run
+`ghidrecomp <target> -o <outdir>`. Without that variable it fails to find Ghidra;
+on Windows set it in the session first (`$env:GHIDRA_INSTALL_DIR = "C:\path\to\ghidra"`).
 
 **rizin / radare2** — `pip`-adjacent native tools; install from each project's
 releases or a package manager (`apt install rizin`, `brew install rizin`,
@@ -79,7 +89,9 @@ npx prettier --write bundle.js
 ```
 
 **wabt (WebAssembly):** `apt install wabt` / `brew install wabt`, or build from
-source; gives `wasm2wat`, `wasm-objdump`, `wasm-decompile`.
+source; gives `wasm2wat`, `wasm-objdump`, `wasm-validate`, `wasm-strip`.
+`wasm-decompile` comes from **binaryen**, not wabt — install that separately
+(`apt install binaryen` / `brew install binaryen`).
 
 **Windows user-mode dynamic stack:** x64dbg + ScyllaHide, Process Monitor
 (Procmon), API Monitor, and Sysmon (Sysinternals) — all free downloads.
@@ -90,6 +102,14 @@ source; gives `wasm2wat`, `wasm-objdump`, `wasm-decompile`.
   cross-platform (Windows/macOS/Linux).
 - **x64dbg, API Monitor, Procmon** are Windows-only. **lldb, dtruss, class-dump,
   Hopper (also Linux)** lean macOS. **strace/ltrace** are Linux.
+- **Windows lacks the usual binutils CLI set.** `objdump`, `readelf`, `nm`,
+  `c++filt`, `strings`, `xxd` and `file` are not present by default. Options:
+  `zig` ships `objdump`/`readelf`/`nm`/`c++filt` equivalents (install it and put
+  it on PATH); a Git-for-Windows or MSYS2 install adds the real binutils; or wrap
+  the equivalents yourself. Check with `Get-Command objdump,readelf,nm,strings`.
+- **`mktemp`/`/tmp` don't exist.** Use `New-Item -ItemType Directory -Force` and
+  `$env:TEMP`. **`chmod`** is a no-op. **`grep`/`sed`** are usually absent outside
+  Git Bash/MSYS2 — use `Select-String` and `Select-Object -Skip/-First`.
 - For mobile dynamic analysis you generally need a **rooted Android device/
   emulator** or a **jailbroken iOS device** you own, plus the matching Frida
   server. Static analysis of APKs/IPAs needs none of that.
@@ -102,6 +122,7 @@ A capable, fully-free baseline that covers most of this skill:
 
 ```
 Ghidra              (native decompiler, all archs)
+ghidrecomp          (batch decompile to one .c per function; needs Ghidra)
 rizin + Cutter      (CLI engine + GUI, scripting)
 Frida + frida-tools (dynamic hooking, all platforms)
 jadx + apktool      (Android)

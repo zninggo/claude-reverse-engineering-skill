@@ -59,7 +59,8 @@ Default to **Ghidra for understanding** and **rizin for scripting/automation**.
 **Agents:** use the headless export in SKILL.md step 6 (`DecompileExport.java`),
 then grep the output and read slices. Details for that recipe:
 
-- **Requirements.** Ghidra 12 needs JDK 21. Use the `.java` script: Ghidra 12+
+- **Requirements.** Ghidra 12 needs JDK 21+; Ghidra 12.2 specifically needs JDK 25
+  (older JDKs refuse to launch it). Use the `.java` script: Ghidra 12+
   runs `.py` scripts only when launched through PyGhidra, and
   `decompile_export.py` is the variant for that.
 - **Script args** after the output path: a case-insensitive function-name filter,

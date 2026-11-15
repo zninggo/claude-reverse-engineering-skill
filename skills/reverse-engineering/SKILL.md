@@ -36,7 +36,16 @@ and back every claim with an address, offset, or captured request.
 (Codex, Cursor, Gemini CLI, Copilot, OpenCode…) replace it yourself with the
 absolute path of this file's directory — left as a shell variable it expands to
 nothing. Paths like `scripts/triage.py` and `references/android.md` are relative
-to that folder. Commands say `python3`; on Windows use `py -3`.
+to that folder.
+
+**Shell.** Examples are POSIX `bash`. On Windows use PowerShell and translate:
+`python3` → `python` (or `py -3`), `which x` → `Get-Command x`, `grep -n pat f`
+→ `Select-String -Path f -Pattern pat`, `sed -n 'A,Bp' f` → `Get-Content f |
+Select-Object -Skip A-1 -First (B-A+1)`, `mktemp -d` → `New-Item -ItemType
+Directory -Force`, `$VAR=x cmd` → `$env:VAR = "x"` then `cmd`, `chmod +x` → not
+needed, and `/tmp` → `$env:TEMP`. Windows has no `objdump`/`readelf`/`nm`/
+`c++filt`/`strings`/`xxd`/`file` unless binutils or a wrapper provides them;
+`zig` ships all of the first four, and Ghidra's `support/` has its own tools.
 
 ## Scope
 
@@ -106,21 +115,37 @@ documenting how a check works in a research write-up, defensive detection).
    for a debugger/tracer/hook when values are computed at runtime or code is
    packed/obfuscated. To read a native target without a GUI, batch-export its
    decompiled C (set `GHIDRA_INSTALL_DIR` to the Ghidra path check_tools reports,
-   or your install dir; on Windows, `analyzeHeadless.bat` and a folder you make):
+   or your install dir; on Windows use `analyzeHeadless.bat` and a folder you make):
    ```bash
    P=$(mktemp -d "${TMPDIR:-/tmp}/ghproj.XXXXXX")
    "$GHIDRA_INSTALL_DIR/support/analyzeHeadless" "$P" re -import <target> \
      -scriptPath "${CLAUDE_SKILL_DIR}/scripts/ghidra" -log "$P/headless.log" \
      -postScript DecompileExport.java "$P/decomp.txt" -deleteProject
    ```
+   On Windows (PowerShell), the same run:
+   ```powershell
+   $P = New-Item -ItemType Directory -Force "$env:TEMP\ghproj_$([guid]::NewGuid())"
+   & "$env:GHIDRA_INSTALL_DIR\support\analyzeHeadless.bat" $P re -import <target> `
+     -scriptPath "<skill-dir>\scripts\ghidra" -log "$P\headless.log" `
+     -postScript DecompileExport.java "$P\decomp.txt" -deleteProject
+   ```
    **`analyzeHeadless` exits 0 even when the script fails** — confirm the output
-   ends with `/* exported N functions */`, else read `$P/headless.log`.
+   ends with `/* exported N functions */`, else read the headless log.
+
+   If `ghidrecomp` is installed it does the same job in one command and writes
+   one `.c` per function, which is easier to grep than a single export:
+   ```bash
+   GHIDRA_INSTALL_DIR="$GHIDRA_INSTALL_DIR" ghidrecomp <target> -o <outdir>
+   ```
+   (On Windows set the variable first: `$env:GHIDRA_INSTALL_DIR = "C:\path\to\ghidra"`.)
 
    Read the export's map first, then `grep -n` it and read matching functions
-   with `sed -n 'START,ENDp'` — don't load the whole file. Crypto constants from
-   `triage.py` come with addresses to jump to. `-analysisTimeoutPerFile` caps
-   analysis only, not the export. Re-exporting without re-analysis, large
-   targets, script args, JDK/PyGhidra:
+   with `sed -n 'START,ENDp'` — don't load the whole file. On Windows,
+   `Select-String -Path <file> -Pattern <pat>` replaces `grep -n`, and
+   `Get-Content <file> | Select-Object -Skip N -First M` replaces `sed -n`.
+   Crypto constants from `triage.py` come with addresses to jump to.
+   `-analysisTimeoutPerFile` caps analysis only, not the export. Re-exporting
+   without re-analysis, large targets, script args, JDK/PyGhidra:
    [references/native-binaries.md](references/native-binaries.md#ghidra-workflow).
 
    For a decompiled/extracted tree (jadx output, a JS bundle, a firmware rootfs),

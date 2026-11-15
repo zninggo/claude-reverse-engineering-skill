@@ -72,9 +72,11 @@ TOOLS = {
     "xxd":       ("triage: hex dump", "part of vim-common / busybox"),
     "strings":   ("triage: extract strings", "binutils (apt install binutils)"),
     # native disassembly / decompilation
-    "ghidra":    ("native: decompiler+disassembler (GUI)", "download from github.com/NationalSecurityAgency/ghidra (needs JDK 21)"),
+    "ghidra":    ("native: decompiler+disassembler (GUI)", "download from github.com/NationalSecurityAgency/ghidra (needs JDK 21+; 12.2 needs 25)"),
     "analyzeHeadless": ("native: Ghidra headless (scripting/batch)", "ships in Ghidra support/ ; add it to PATH"),
     "pyghidraRun": ("native: Ghidra with CPython 3 (PyGhidra)", "ships in Ghidra 12+ ; run once to install the Python module"),
+    "ghidrecomp": ("native: batch decompile to per-function .c files", "uv tool install ghidrecomp (needs GHIDRA_INSTALL_DIR)"),
+    "zig":       ("native: C compiler + objdump/readelf/nm backend", "ziglang.org/download (also provides objdump, readelf, nm, c++filt)"),
     "rizin":     ("native: CLI disasm engine (scriptable)", "apt install rizin / brew install rizin"),
     "r2":        ("native: radare2 CLI", "github.com/radareorg/radare2 (sys/install.sh)"),
     "cutter":    ("native: rizin GUI", "download from cutter.re"),
@@ -114,7 +116,7 @@ TOOLS = {
     "npx":       ("js: run @electron/asar, prettier, etc.", "ships with Node.js"),
     "wasm2wat":  ("wasm: bytecode -> text (wabt)", "apt install wabt / brew install wabt"),
     "wasm-objdump": ("wasm: sections/imports/exports", "apt install wabt"),
-    "wasm-decompile": ("wasm: higher-level pseudocode", "apt install wabt"),
+    "wasm-decompile": ("wasm: higher-level pseudocode", "apt install binaryen (NOT wabt)"),
     # dynamic instrumentation
     "frida":     ("dynamic: hook native/Android/iOS (CLI)", "pip install frida-tools"),
     "frida-trace": ("dynamic: auto-hook matching functions", "pip install frida-tools"),
@@ -147,14 +149,15 @@ TOOLS = {
     "capa":      ("malware: capabilities mapped to ATT&CK", "github.com/mandiant/capa releases (or pip install flare-capa)"),
     "floss":     ("malware: obfuscated/stack string recovery", "github.com/mandiant/flare-floss releases"),
     "yara":      ("malware: rule-based matching", "apt/brew install yara"),
+    "yr":        ("malware: YARA-X rule engine (Rust rewrite)", "github.com/VirusTotal/yara-x releases"),
     "diec":      ("malware: packer/compiler identification (Detect It Easy)", "github.com/horsicq/Detect-It-Easy releases"),
     "olevba":    ("malware: Office macro extraction (oletools)", "pip install oletools"),
 }
 
 TASKS = {
     "triage":    ["file", "xxd", "strings"],
-    "native":    ["ghidra", "analyzeHeadless", "pyghidraRun", "rizin", "r2",
-                  "cutter", "objdump", "readelf", "nm", "c++filt", "dumpbin", "otool", "lipo"],
+    "native":    ["ghidra", "analyzeHeadless", "pyghidraRun", "ghidrecomp", "rizin", "r2",
+                  "cutter", "objdump", "readelf", "nm", "c++filt", "zig", "dumpbin", "otool", "lipo"],
     "debug":     ["gdb", "lldb", "x64dbg", "windbg"],
     "android":   ["jadx", "jadx-gui", "apktool", "baksmali", "bundletool", "adb"],
     "ios":       ["class-dump", "plutil", "codesign", "otool", "lipo"],
@@ -167,7 +170,7 @@ TASKS = {
     "firmware":  ["binwalk", "unblob", "unsquashfs", "7z"],
     "emulation": ["qemu-user", "qemu-system-arm"],
     "diffing":   ["rz-diff", "radiff2", "bindiff"],
-    "malware":   ["capa", "floss", "yara", "diec", "olevba"],
+    "malware":   ["capa", "floss", "yara", "yr", "diec", "olevba"],
 }
 
 
